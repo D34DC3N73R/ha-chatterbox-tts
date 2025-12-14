@@ -1,13 +1,12 @@
 {
   "domain": "chatterbox_tts",
   "name": "Chatterbox TTS",
-  "version": "1.0.5",
-  "documentation": "https://github.com/D34DC3N73R/ha-chatterbox-tts",
-  "issue_tracker": "https://github.com/D34DC3N73R/ha-chatterbox-tts/issues",
-  "requirements": [],
-  "dependencies": [],
   "codeowners": ["@D34DC3N73R"],
   "config_flow": true,
-  "iot_class": "local_push"
+  "dependencies": [],
+  "documentation": "https://github.com/D34DC3N73R/ha-chatterbox-tts",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/D34DC3N73R/ha-chatterbox-tts/issues",
+  "requirements": [],
+  "version": "1.0.5",
 }
-
