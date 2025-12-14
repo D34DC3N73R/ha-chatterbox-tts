@@ -38,6 +38,11 @@
       "init": {
         "title": "Chatterbox TTS – Voice Settings",
         "description": "Adjust the default voice and speech style.",
+        "data": {
+          "reference_audio_filename": "Voice",
+          "exaggeration": "Exaggeration",
+          "speed_factor": "Speed Factor"
+        },
         "data_description": {
           "reference_audio_filename": "Clone: filename only (e.g., voice.wav) Must exist in the reference_audio folder.\nPredefined: select a voice from the Chatterbox server list.",
           "exaggeration": "Emotional intensity. 0.0 = flat, 0.5 = natural, higher = more expressive.",
