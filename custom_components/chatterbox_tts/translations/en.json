@@ -23,7 +23,7 @@
           "speed_factor": "Speed Factor"
         },
         "data_description": {
-          "reference_audio_filename": "Clone: filename only (e.g., voice.wav) Must exist in the reference_audio folder.\nPredefined: select a voice from the Chatterbox server list.",
+          "reference_audio_filename": "Select a voice from the Chatterbox server list.",
           "exaggeration": "Emotional intensity. 0.0 = flat, 0.5 = natural, higher = more expressive.",
           "speed_factor": "Speech speed. EXPERIMENTAL — values ≠ 1.0 may cause echo or artifacts."
         }
@@ -44,14 +44,14 @@
           "speed_factor": "Speed Factor"
         },
         "data_description": {
-          "reference_audio_filename": "Clone: filename only (e.g., voice.wav) Must exist in the reference_audio folder.\nPredefined: select a voice from the Chatterbox server list.",
+          "reference_audio_filename": "Select a voice from the Chatterbox server list.",
           "exaggeration": "Emotional intensity. 0.0 = flat, 0.5 = natural, higher = more expressive.",
           "speed_factor": "Speech speed. EXPERIMENTAL — values ≠ 1.0 may cause echo or artifacts."
         }
       }
     },
     "error": {
-      "fetch_voices_failed": "Could not load predefined voices from server. Using fallback list."
+      "fetch_voices_failed": "Could not load voices from server. Using fallback list."
     }
   }
 }
