@@ -94,4 +94,4 @@ class ChatterboxTTSEntity(TextToSpeechEntity):
                     return "mp3", audio
         except Exception as err:
             _LOGGER.exception("Unexpected error in Chatterbox TTS: %s", err)
-            return None, None"""
+            return None, None
