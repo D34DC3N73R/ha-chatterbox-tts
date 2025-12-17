@@ -1,4 +1,4 @@
-"""Config flow for Chatterbox TTS — dropdown for both modes."""
+"""Config flow for Chatterbox TTS"""
 from __future__ import annotations
 
 import aiohttp
@@ -36,7 +36,7 @@ class ChatterboxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     selector.SelectSelectorConfig(
                         options=[
                             selector.SelectOptionDict(value="clone", label="Clone Voice"),
-                            selector.SelectOptionDict(value="predefined", label="Predefined voice"),
+                            selector.SelectOptionDict(value="predefined", label="Predefined Voice"),
                         ],
                         mode=selector.SelectSelectorMode.DROPDOWN,
                     )
@@ -75,18 +75,11 @@ class ChatterboxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors["base"] = "fetch_voices_failed"
 
         if not options:
-            if voice_mode == "predefined":
-                options = [
-                    {"value": "Alice.wav", "label": "Alice"},
-                    {"value": "Abigail.wav", "label": "Abigail"},
-                ]
-            else:
-                options = [
-                    {"value": "Gianna.wav", "label": "Gianna.wav"},
-                ]
+            options = [
+                {"value": "Gianna.wav", "label": "Gianna"},
+            ]
 
-        # Use dict access for default
-        default_voice = self.data.get(CONF_REFERENCE_AUDIO) or options[0]["value"]
+        default_voice = options[0]["value"]
 
         schema = vol.Schema(
             {
@@ -148,14 +141,9 @@ class ChatterboxOptionsFlow(config_entries.OptionsFlow):
             errors["base"] = "fetch_voices_failed"
 
         if not options:
-            if voice_mode == "predefined":
-                options = [
-                    {"value": "Alice.wav", "label": "Alice"},
-                ]
-            else:
-                options = [
-                    {"value": "Gianna.wav", "label": "Gianna.wav"},
-                ]
+            options = [
+                {"value": "Gianna.wav", "label": "Gianna"},
+            ]
 
         default_voice = current.get(CONF_REFERENCE_AUDIO) or options[0]["value"]
 
