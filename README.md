@@ -4,15 +4,13 @@ A Home Assistant integration for [Chatterbox-TTS-Server](https://github.com/devn
 
 ## Features
 
-- 🎙️ **Voice Cloning**: Clone custom voices from reference audio files
+- 🎙️ **Voice Cloning**: Choose from cloned custom voices available on the Chatterbox-TTS-Server
 - 🗣️ **Predefined Voices**: Choose from built-in high-quality voices
 - 🔢 **Multi-Entity Support**: Configure multiple TTS entities with different voices from your Chatterbox-TTS-Server
-- 🌍 **Multi-Language Support**: Support for 30+ languages including English, Spanish, French, German, Italian, Portuguese, Dutch, Russian, Chinese, Japanese, Korean, Arabic, and many more
 - 🎚️ **Configurable Parameters**:
   - Exaggeration level (0.0 - 2.0) for more expressive speech
   - Speed factor (0.25 - 4.0) to control speech rate (experimental - may cause audio distortions or echoes)
 - ⚙️ **Easy Configuration**: Simple UI-based setup through Home Assistant's config flow
-- 🔄 **Dynamic Voice Selection**: Change voices through the integration options
 - 🏠 **Local Processing**: Works with self-hosted Chatterbox TTS instances for privacy
 
 ## Requirements
@@ -117,12 +115,6 @@ script:
           media_player_entity_id: "{{ media_player }}"
           message: "{{ message }}"
 ```
-
-## Supported Languages
-
-The integration supports the following languages:
-
-`en`, `en-US`, `en-GB`, `es`, `fr`, `de`, `it`, `pt`, `nl`, `ru`, `zh`, `ja`, `ko`, `ar`, `cs`, `da`, `fi`, `el`, `hi`, `hu`, `id`, `no`, `pl`, `ro`, `sk`, `sv`, `tr`, `uk`
 
 ## Troubleshooting
 
