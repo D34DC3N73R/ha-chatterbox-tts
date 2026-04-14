@@ -4,9 +4,11 @@ A Home Assistant integration for [Chatterbox-TTS-Server](https://github.com/devn
 
 ## Features
 
+- 🔄 **Model Switching**: Switch between Original, Turbo, and Multilingual Chatterbox models directly from the HA config UI
 - 🎙️ **Voice Cloning**: Choose from cloned custom voices available on the Chatterbox-TTS-Server
 - 🗣️ **Predefined Voices**: Choose from built-in high-quality voices
 - 🔢 **Multi-Entity Support**: Configure multiple TTS entities with different voices from your Chatterbox-TTS-Server
+- 🌍 **Multilingual**: Pass a language code when using the Multilingual model (23 languages supported)
 - 🎚️ **Configurable Parameters**:
   - Exaggeration level (0.0 - 2.0) for more expressive speech
   - Speed factor (0.25 - 4.0) to control speech rate (experimental - may cause audio distortions or echoes)
@@ -45,26 +47,44 @@ A Home Assistant integration for [Chatterbox-TTS-Server](https://github.com/devn
 2. Click **+ Add Integration**
 3. Search for "Chatterbox TTS" and select it
 4. Enter your Chatterbox TTS server URL (e.g., `http://localhost:8004` or `http://192.168.1.100:8004`)
-5. Choose the voice mode:
+5. Choose the **Model**:
+   - **Original**: High-quality English with emotion exaggeration control
+   - **Turbo**: Fastest inference, supports paralinguistic tags like `[laugh]`, `[cough]`, `[chuckle]`
+   - **Multilingual**: 23-language support with voice cloning and emotion control
+6. Choose the **Voice Mode**:
    - **Clone Voice**: Use custom voice cloning with reference audio files
    - **Predefined Voice**: Use built-in voices
-6. Select a voice from the available options
-7. Optionally configure:
+7. Select a voice from the available options
+8. Optionally configure:
    - **Exaggeration** (default: 0.5): Controls expressiveness of the generated speech
    - **Speed Factor** (default: 1.0): Controls speech rate ⚠️ *Experimental - may cause audio distortions or echoes*
-8. Click **Submit** to complete the setup
+   - **Language** (Multilingual model only): ISO 639-1 code (e.g., `en`, `fr`, `de`, `ja`, `zh`)
+9. Click **Submit** to complete the setup
 
 **Note**: You can add the integration multiple times to create separate TTS entities for different voices available on your Chatterbox-TTS-Server. Each entity can be configured with its own voice, exaggeration, and speed settings.
 
-### Changing Voice or Options
+> ### ⚠️ Important: How Model Switching Works
+>
+> Chatterbox-TTS-Server can only load **one model at a time** into VRAM. Each TTS entity records which model it was configured with (Original, Turbo, or Multilingual). Before every TTS request, the integration checks what model the server currently has loaded and **automatically hot-swaps if it doesn't match**.
+>
+> **This means:**
+>
+> - **If all your entities use the same model** (e.g., all Turbo), the check is a fast no-op and you'll never notice it.
+> - **If you have entities configured with different models**, calling one after the other will trigger a model swap. Depending on your GPU, this adds **10–30+ seconds** of latency while weights are unloaded and reloaded. A per-server lock ensures swaps don't race each other — the second call will wait for the first swap to finish.
+> - **If the model-info check fails** (e.g., server is slow to respond), the integration proceeds optimistically with whatever model is loaded rather than blocking the TTS call.
+> - The server also downloads model weights from Hugging Face on first use of each model type — this is a one-time cost per model.
 
-You can change the voice or adjust parameters at any time:
+### Changing Voice, Model, or Options
+
+You can change the voice, model, or adjust parameters at any time:
 
 1. Go to **Settings** → **Devices & Services**
 2. Find the Chatterbox TTS integration
 3. Click **Configure**
-4. Select a new voice or adjust the exaggeration and speed factor settings
+4. Select a new model, voice, or adjust the exaggeration and speed factor settings
 5. Click **Submit**
+
+If you changed the model, the server will hot-swap to the new model before saving. This may take a moment.
 
 ## Usage
 
@@ -81,6 +101,35 @@ target:
 data:
   media_player_entity_id: media_player.living_room
   message: "Hello, this is a test of the Chatterbox TTS integration!"
+```
+
+#### Turbo with Paralinguistic Tags
+
+When using the Turbo model, you can include expressive tags directly in your text:
+
+```yaml
+service: tts.speak
+target:
+  entity_id: tts.chatterbox_emily
+data:
+  media_player_entity_id: media_player.living_room
+  message: "Oh wow [laugh] I can't believe that actually worked! [chuckle] Let me try again."
+```
+
+Supported tags: `[laugh]`, `[chuckle]`, `[sigh]`, `[gasp]`, `[cough]`, `[clear throat]`, `[sniff]`, `[groan]`, `[shush]`
+
+#### Multilingual with Language Override
+
+When using the Multilingual model, you can override the language per call:
+
+```yaml
+service: tts.speak
+target:
+  entity_id: tts.chatterbox_gianna
+data:
+  media_player_entity_id: media_player.living_room
+  message: "Bonjour, comment ça va?"
+  language: fr
 ```
 
 ### Automation Example
@@ -117,6 +166,13 @@ script:
 ```
 
 ## Troubleshooting
+
+### Model Switch Failed
+
+- The server must be running and reachable when you change the model in the config UI
+- Model hot-swaps can take 10–30+ seconds depending on your GPU — the config flow has a 120-second timeout
+- Check the Chatterbox-TTS-Server logs for errors (e.g., out of VRAM, missing model files)
+- The server downloads model weights from Hugging Face on first use of each model type — this requires internet access on the server
 
 ### Integration Fails to Load Voices
 

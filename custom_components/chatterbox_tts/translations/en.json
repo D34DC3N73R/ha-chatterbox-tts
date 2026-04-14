@@ -4,13 +4,15 @@
     "step": {
       "user": {
         "title": "Set up Chatterbox TTS",
-        "description": "Connect to your self-hosted Chatterbox TTS server.",
+        "description": "Connect to your self-hosted Chatterbox TTS server.\n\nChanging the model will hot-swap the engine on the server — this may take a moment while weights load into VRAM.",
         "data": {
           "url": "Server URL",
+          "model_type": "Model",
           "voice_mode": "Voice Mode"
         },
         "data_description": {
           "url": "Full base URL including port (e.g., http://192.168.1.100:8004).",
+          "model_type": "Original: English with emotion control. Turbo: fastest, paralinguistic tags. Multilingual: 23 languages.",
           "voice_mode": "Clone: Voice from an audio file. Predefined: Voice from the server."
         }
       },
@@ -20,38 +22,46 @@
         "data": {
           "reference_audio_filename": "Voice",
           "exaggeration": "Exaggeration",
-          "speed_factor": "Speed Factor"
+          "speed_factor": "Speed Factor",
+          "language": "Language"
         },
         "data_description": {
           "reference_audio_filename": "Select a voice from the Chatterbox server list.",
           "exaggeration": "Emotional intensity. 0.0 = flat, 0.5 = natural, higher = more expressive.",
-          "speed_factor": "Speech speed. EXPERIMENTAL — values ≠ 1.0 may cause echo or artifacts."
+          "speed_factor": "Speech speed. EXPERIMENTAL — values ≠ 1.0 may cause echo or artifacts.",
+          "language": "ISO 639-1 code (e.g. en, fr, de, ja, zh). Only used with the Multilingual model."
         }
       }
     },
     "error": {
-      "fetch_voices_failed": "Could not load predefined voices from server. Using fallback list."
+      "fetch_voices_failed": "Could not load voices from server. Using fallback list.",
+      "model_switch_failed": "Failed to switch model on the server. Check that the server is running and the model is available."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Chatterbox TTS – Voice Settings",
-        "description": "Adjust the default voice and speech style.",
+        "title": "Chatterbox TTS – Settings",
+        "description": "Adjust the model, voice, and speech style.\n\nChanging the model will hot-swap the engine on the server.",
         "data": {
+          "model_type": "Model",
           "reference_audio_filename": "Voice",
           "exaggeration": "Exaggeration",
-          "speed_factor": "Speed Factor"
+          "speed_factor": "Speed Factor",
+          "language": "Language"
         },
         "data_description": {
+          "model_type": "Original: English with emotion control. Turbo: fastest, paralinguistic tags. Multilingual: 23 languages.",
           "reference_audio_filename": "Select a voice from the Chatterbox server list.",
           "exaggeration": "Emotional intensity. 0.0 = flat, 0.5 = natural, higher = more expressive.",
-          "speed_factor": "Speech speed. EXPERIMENTAL — values ≠ 1.0 may cause echo or artifacts."
+          "speed_factor": "Speech speed. EXPERIMENTAL — values ≠ 1.0 may cause echo or artifacts.",
+          "language": "ISO 639-1 code (e.g. en, fr, de, ja, zh). Only used with the Multilingual model."
         }
       }
     },
     "error": {
-      "fetch_voices_failed": "Could not load voices from server. Using fallback list."
+      "fetch_voices_failed": "Could not load voices from server. Using fallback list.",
+      "model_switch_failed": "Failed to switch model on the server. Check that the server is running and the model is available."
     }
   }
 }
