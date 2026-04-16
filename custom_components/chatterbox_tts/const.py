@@ -15,4 +15,4 @@ MODEL_TYPES = {
     "chatterbox-multilingual": "Multilingual (23 languages)",
 }
 
-DEFAULT_MODEL_TYPE = "chatterbox-turbo"
+DEFAULT_MODEL_TYPE = "chatterbox"

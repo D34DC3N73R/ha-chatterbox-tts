@@ -144,6 +144,7 @@ class ChatterboxTTSEntity(TextToSpeechEntity):
         self.hass = hass
         self._data = data  # Fixed setup data
         self._options = options or {}
+        self._cfg = {**data, **(options or {})}
         self._url = data[CONF_URL].rstrip("/")
         raw_voice = data.get(CONF_REFERENCE_AUDIO, "default")
         clean_voice = raw_voice.split(".")[0].replace("-", "_").replace(" ", "_").lower()
@@ -176,7 +177,7 @@ class ChatterboxTTSEntity(TextToSpeechEntity):
         language: str | None = None,
         options: dict | None = None,
     ) -> tuple[str, bytes] | tuple[None, None]:
-        model_type = self._data.get(CONF_MODEL_TYPE, DEFAULT_MODEL_TYPE)
+        model_type = self._cfg.get(CONF_MODEL_TYPE, DEFAULT_MODEL_TYPE)
 
         # Ensure the server is running the correct model for this entity
         model_ok = await _ensure_model(self.hass, self._url, model_type)
@@ -190,14 +191,14 @@ class ChatterboxTTSEntity(TextToSpeechEntity):
         opts = {**self.default_options, **(options or {})}
         payload: dict = {
             "text": message,
-            "voice_mode": self._data.get(CONF_VOICE_MODE, "clone"),
+            "voice_mode": self._cfg.get(CONF_VOICE_MODE, "clone"),
             "output_format": "mp3",
             "split_text": True,
             "chunk_size": 240,
             "exaggeration": float(opts.get("exaggeration", 0.5)),
             "speed_factor": float(opts.get("speed_factor", 1.0)),
         }
-        voice_filename = self._data.get(CONF_REFERENCE_AUDIO)
+        voice_filename = self._cfg.get(CONF_REFERENCE_AUDIO)
         if voice_filename:
             if payload["voice_mode"] == "clone":
                 payload["reference_audio_filename"] = voice_filename
@@ -210,7 +211,7 @@ class ChatterboxTTSEntity(TextToSpeechEntity):
         # Pass language for multilingual model
         if model_type == "chatterbox-multilingual":
             # Prefer per-call language option, then config language, then HA language
-            lang = opts.get(CONF_LANGUAGE) or self._data.get(CONF_LANGUAGE) or language or "en"
+            lang = opts.get(CONF_LANGUAGE) or self._cfg.get(CONF_LANGUAGE) or language or "en"
             # Strip region suffix (e.g. "en-US" -> "en") for the server API
             if lang and "-" in lang:
                 lang = lang.split("-")[0]

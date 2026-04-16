@@ -242,17 +242,6 @@ class ChatterboxOptionsFlow(config_entries.OptionsFlow):
         url = current[CONF_URL].rstrip("/")
         current_model = current.get(CONF_MODEL_TYPE, DEFAULT_MODEL_TYPE)
 
-        # Try to detect what the server is actually running
-        server_type = await _fetch_current_model(url)
-        if server_type:
-            detected_model = _server_type_to_config(server_type)
-            if detected_model != current_model:
-                _LOGGER.debug(
-                    "Server model (%s) differs from config (%s), showing server value",
-                    detected_model, current_model,
-                )
-                current_model = detected_model
-
         if voice_mode == "predefined":
             endpoint = "/get_predefined_voices"
             option_builder = lambda v: {"value": v["filename"], "label": v["display_name"]}
