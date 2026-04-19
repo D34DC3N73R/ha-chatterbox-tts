@@ -170,12 +170,18 @@ class ChatterboxTTSEntity(TextToSpeechEntity):
         raw_voice = data.get(CONF_REFERENCE_AUDIO, "default")
         stem = raw_voice.split(".")[0].lower()
         clean_voice = re.sub(r'[^a-z0-9]+', '_', stem).strip("_") or "default"
-        # New entries use the config entry unique_id (e.g. "chatterbox_gianna_2").
-        # Old entries without a unique_id fall back to the legacy computed name.
-        base_id = entry_unique_id or f"chatterbox_{clean_voice}"
-        self._attr_unique_id = base_id
-        self._attr_name = f"Chatterbox TTS – {base_id.removeprefix('chatterbox_').replace('_', ' ').title()}"
-        self.entity_id = f"tts.{base_id}"
+        if entry_unique_id:
+            # New entries: config flow assigned a human-friendly unique_id like "chatterbox_rogan_2"
+            self._attr_unique_id = entry_unique_id
+            self._attr_name = f"Chatterbox TTS – {entry_unique_id.removeprefix('chatterbox_').replace('_', ' ').title()}"
+            self.entity_id = f"tts.{entry_unique_id}"
+            _LOGGER.debug("New entry: unique_id=%s entity_id=%s", self._attr_unique_id, self.entity_id)
+        else:
+            # Legacy entries: preserve the original unique_id so the entity registry entry is reused
+            self._attr_unique_id = f"chatterbox_tts_{clean_voice}"
+            self._attr_name = f"Chatterbox TTS – {clean_voice.replace('_', ' ').title()}"
+            self.entity_id = f"tts.chatterbox_{clean_voice}"
+            _LOGGER.debug("Legacy entry: unique_id=%s entity_id=%s", self._attr_unique_id, self.entity_id)
 
     @property
     def default_language(self) -> str | None:
