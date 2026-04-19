@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import aiohttp
 import voluptuous as vol
 from homeassistant import config_entries
@@ -36,7 +37,13 @@ async def _fetch_current_model(url: str) -> str | None:
             async with session.get(f"{url}/api/model-info") as resp:
                 if resp.status == 200:
                     data = await resp.json()
-                    return data.get("type")  # "original", "turbo", "multilingual"
+                    _LOGGER.debug("model-info raw response: %s", data)
+                    model_type = data.get("type")
+                    _LOGGER.debug("model-info type field: %r", model_type)
+                    return model_type  # "original", "turbo", "multilingual"
+                else:
+                    body = await resp.text()
+                    _LOGGER.warning("model-info returned status %s: %s", resp.status, body)
     except Exception as err:
         _LOGGER.debug("Could not fetch model info: %s", err)
     return None
@@ -57,25 +64,27 @@ async def _switch_model(url: str, model_type: str) -> bool:
 
     Returns True on success, False on failure.
     """
+    save_payload = {"model": {"repo_id": model_type}}
+    _LOGGER.debug("Switching model to %r, save_settings payload: %s", model_type, save_payload)
     try:
         async with aiohttp.ClientSession(timeout=MODEL_SWITCH_TIMEOUT) as session:
             # Step 1: Save the new model selector to config.yaml
             async with session.post(
                 f"{url}/save_settings",
-                json={"model": {"repo_id": model_type}},
+                json=save_payload,
             ) as resp:
+                body = await resp.text()
+                _LOGGER.debug("save_settings status=%s body=%s", resp.status, body)
                 if resp.status != 200:
-                    _LOGGER.error(
-                        "Failed to save model setting: %s", await resp.text()
-                    )
+                    _LOGGER.error("Failed to save model setting (status %s): %s", resp.status, body)
                     return False
 
             # Step 2: Hot-swap the engine
             async with session.post(f"{url}/restart_server") as resp:
+                body = await resp.text()
+                _LOGGER.debug("restart_server status=%s body=%s", resp.status, body)
                 if resp.status != 200:
-                    _LOGGER.error(
-                        "Failed to hot-swap model: %s", await resp.text()
-                    )
+                    _LOGGER.error("Failed to hot-swap model (status %s): %s", resp.status, body)
                     return False
 
             _LOGGER.info("Successfully switched server model to %s", model_type)
@@ -149,6 +158,18 @@ class ChatterboxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             final_data = {**self.data, **user_input}
+            _LOGGER.debug("Creating config entry with data: %s", final_data)
+            voice = user_input.get(CONF_REFERENCE_AUDIO, "")
+            stem = voice.split(".")[0].lower()
+            clean_voice = re.sub(r'[^a-z0-9]+', '_', stem).strip("_") or "default"
+            existing_ids = {e.unique_id for e in self.hass.config_entries.async_entries(DOMAIN)}
+            base = f"chatterbox_{clean_voice}"
+            uid, n = base, 2
+            while uid in existing_ids:
+                uid = f"{base}_{n}"
+                n += 1
+            _LOGGER.debug("Assigned config entry unique_id=%s", uid)
+            await self.async_set_unique_id(uid)
             self._abort_if_unique_id_configured(updates=final_data)
             return self.async_create_entry(title="Chatterbox TTS", data=final_data)
 
@@ -167,13 +188,21 @@ class ChatterboxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         try:
             async with aiohttp.ClientSession(timeout=API_TIMEOUT) as session:
                 async with session.get(f"{url}{endpoint}") as resp:
+                    _LOGGER.debug("Voice list %s status=%s", endpoint, resp.status)
                     if resp.status == 200:
                         data = await resp.json()
+                        _LOGGER.debug("Voice list raw response: %s", data)
                         options = [option_builder(item) for item in data]
+                    else:
+                        body = await resp.text()
+                        _LOGGER.warning("Voice list %s returned status %s: %s", endpoint, resp.status, body)
+                        errors["base"] = "fetch_voices_failed"
         except Exception:
+            _LOGGER.exception("Failed to fetch voice list from %s%s", url, endpoint)
             errors["base"] = "fetch_voices_failed"
 
         if not options:
+            _LOGGER.warning("No voices returned; falling back to default Gianna.wav")
             options = [
                 {"value": "Gianna.wav", "label": "Gianna"},
             ]
@@ -253,13 +282,21 @@ class ChatterboxOptionsFlow(config_entries.OptionsFlow):
         try:
             async with aiohttp.ClientSession(timeout=API_TIMEOUT) as session:
                 async with session.get(f"{url}{endpoint}") as resp:
+                    _LOGGER.debug("Options voice list %s status=%s", endpoint, resp.status)
                     if resp.status == 200:
                         data = await resp.json()
+                        _LOGGER.debug("Options voice list raw response: %s", data)
                         options = [option_builder(item) for item in data]
+                    else:
+                        body = await resp.text()
+                        _LOGGER.warning("Options voice list %s returned status %s: %s", endpoint, resp.status, body)
+                        errors["base"] = "fetch_voices_failed"
         except Exception:
+            _LOGGER.exception("Failed to fetch voice list from %s%s (options flow)", url, endpoint)
             errors["base"] = "fetch_voices_failed"
 
         if not options:
+            _LOGGER.warning("No voices returned in options flow; falling back to default Gianna.wav")
             options = [
                 {"value": "Gianna.wav", "label": "Gianna"},
             ]

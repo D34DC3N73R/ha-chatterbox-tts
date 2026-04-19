@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import aiohttp
 
 from homeassistant.components.tts import TextToSpeechEntity
@@ -74,53 +75,61 @@ async def _ensure_model(
 
     async with lock:
         # Check what the server is currently running
+        current_type = None
+        current_selector = None
         try:
             async with aiohttp.ClientSession(timeout=_API_TIMEOUT) as session:
                 async with session.get(f"{server_url}/api/model-info") as resp:
                     if resp.status == 200:
                         info = await resp.json()
+                        _LOGGER.debug("model-info response: %s", info)
                         current_type = info.get("type")
                         current_selector = _SERVER_TYPE_TO_SELECTOR.get(current_type)
+                        _LOGGER.debug(
+                            "model-info: server type=%r → selector=%r, desired=%r",
+                            current_type, current_selector, desired_model,
+                        )
                         if current_selector == desired_model:
-                            return True  # Already running the right model
+                            _LOGGER.debug("Model already correct (%r), no switch needed", desired_model)
+                            return True
                     else:
+                        body = await resp.text()
                         _LOGGER.warning(
-                            "Could not query model info (status %s), proceeding with TTS anyway",
-                            resp.status,
+                            "model-info status %s: %s — proceeding optimistically",
+                            resp.status, body,
                         )
                         return True  # Optimistic — don't block TTS on a failed info check
         except Exception as err:
-            _LOGGER.warning(
-                "Could not query model info (%s), proceeding with TTS anyway", err
-            )
+            _LOGGER.warning("Could not query model info (%s), proceeding optimistically", err)
             return True  # Optimistic
 
         # Need to switch
         _LOGGER.info(
-            "Server is running '%s' but entity needs '%s' — hot-swapping model",
-            current_selector,
-            desired_model,
+            "Server type=%r (selector=%r) does not match desired=%r — hot-swapping",
+            current_type, current_selector, desired_model,
         )
+        save_payload = {"model": {"repo_id": desired_model}}
+        _LOGGER.debug("save_settings payload: %s", save_payload)
 
         try:
             async with aiohttp.ClientSession(timeout=_MODEL_SWITCH_TIMEOUT) as session:
                 # Step 1: Save the new model selector
                 async with session.post(
                     f"{server_url}/save_settings",
-                    json={"model": {"repo_id": desired_model}},
+                    json=save_payload,
                 ) as resp:
+                    body = await resp.text()
+                    _LOGGER.debug("save_settings status=%s body=%s", resp.status, body)
                     if resp.status != 200:
-                        _LOGGER.error(
-                            "Failed to save model setting: %s", await resp.text()
-                        )
+                        _LOGGER.error("Failed to save model setting (status %s): %s", resp.status, body)
                         return False
 
                 # Step 2: Hot-swap the engine
                 async with session.post(f"{server_url}/restart_server") as resp:
+                    body = await resp.text()
+                    _LOGGER.debug("restart_server status=%s body=%s", resp.status, body)
                     if resp.status != 200:
-                        _LOGGER.error(
-                            "Failed to hot-swap model: %s", await resp.text()
-                        )
+                        _LOGGER.error("Failed to hot-swap model (status %s): %s", resp.status, body)
                         return False
 
             _LOGGER.info("Model hot-swap to '%s' completed successfully", desired_model)
@@ -136,21 +145,37 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the Chatterbox TTS entity."""
-    async_add_entities([ChatterboxTTSEntity(hass, entry.data, entry.options, entry.entry_id)])
+    _LOGGER.debug(
+        "async_setup_entry: entry_id=%s data=%s options=%s",
+        entry.entry_id, dict(entry.data), dict(entry.options),
+    )
+    try:
+        entity = ChatterboxTTSEntity(hass, entry.data, entry.options, entry.entry_id, entry.unique_id)
+        _LOGGER.debug(
+            "Entity created: unique_id=%s entity_id=%s",
+            entity._attr_unique_id, entity.entity_id,
+        )
+        async_add_entities([entity])
+    except Exception:
+        _LOGGER.exception("Failed to create ChatterboxTTSEntity for entry %s", entry.entry_id)
 
 
 class ChatterboxTTSEntity(TextToSpeechEntity):
-    def __init__(self, hass: HomeAssistant, data: dict, options: dict, entry_id: str):
+    def __init__(self, hass: HomeAssistant, data: dict, options: dict, entry_id: str, entry_unique_id: str | None = None):
         self.hass = hass
         self._data = data  # Fixed setup data
         self._options = options or {}
         self._cfg = {**data, **(options or {})}
         self._url = data[CONF_URL].rstrip("/")
         raw_voice = data.get(CONF_REFERENCE_AUDIO, "default")
-        clean_voice = raw_voice.split(".")[0].replace("-", "_").replace(" ", "_").lower()
-        self._attr_unique_id = f"chatterbox_tts_{clean_voice}"
-        self._attr_name = f"Chatterbox TTS – {clean_voice.replace('_', ' ').title()}"
-        self.entity_id = f"tts.chatterbox_{clean_voice}"
+        stem = raw_voice.split(".")[0].lower()
+        clean_voice = re.sub(r'[^a-z0-9]+', '_', stem).strip("_") or "default"
+        # New entries use the config entry unique_id (e.g. "chatterbox_gianna_2").
+        # Old entries without a unique_id fall back to the legacy computed name.
+        base_id = entry_unique_id or f"chatterbox_{clean_voice}"
+        self._attr_unique_id = base_id
+        self._attr_name = f"Chatterbox TTS – {base_id.removeprefix('chatterbox_').replace('_', ' ').title()}"
+        self.entity_id = f"tts.{base_id}"
 
     @property
     def default_language(self) -> str | None:
@@ -178,6 +203,10 @@ class ChatterboxTTSEntity(TextToSpeechEntity):
         options: dict | None = None,
     ) -> tuple[str, bytes] | tuple[None, None]:
         model_type = self._cfg.get(CONF_MODEL_TYPE, DEFAULT_MODEL_TYPE)
+        _LOGGER.debug(
+            "TTS request: entity=%s model_type=%r cfg=%s",
+            self.entity_id, model_type, self._cfg,
+        )
 
         # Ensure the server is running the correct model for this entity
         model_ok = await _ensure_model(self.hass, self._url, model_type)
