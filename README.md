@@ -132,6 +132,38 @@ data:
   language: fr
 ```
 
+#### Per-call Option Overrides
+
+Any parameter can be overridden on a per-call basis using the `options` key, without changing the entity's saved settings. This is useful for one-off announcements that need a different tone or speed.
+
+```yaml
+service: tts.speak
+target:
+  entity_id: tts.chatterbox_gianna
+data:
+  media_player_entity_id: media_player.living_room
+  message: "WARNING: Motion detected at the front door!"
+  options:
+    exaggeration: 1.2
+    speed_factor: 0.9
+    cfg_weight: 0.3
+    temperature: 0.6
+    chunk_size: 80
+    stream: true
+```
+
+All options are optional — omit any you don't want to override and the entity's configured defaults will be used.
+
+| Option | Description | Models |
+|---|---|---|
+| `exaggeration` | Emotional intensity (lower = flatter, higher = more expressive) | Original, Multilingual |
+| `cfg_weight` | Voice adherence (lower = more creative, higher = closer to reference) | Original, Multilingual |
+| `speed_factor` | Speech rate — values other than 1.0 may cause artifacts | Original, Multilingual |
+| `temperature` | Output variation (lower = consistent, higher = varied) | Original, Multilingual |
+| `chunk_size` | Words per synthesis chunk (lower = less latency, higher = better prosody) | All |
+| `stream` | Stream audio as it's generated instead of waiting for the full clip | All |
+| `language` | Language code (e.g. `fr`, `de`, `ja`) | Multilingual only |
+
 ### Automation Example
 
 ```yaml
