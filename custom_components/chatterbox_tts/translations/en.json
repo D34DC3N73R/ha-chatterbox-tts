@@ -12,24 +12,32 @@
         },
         "data_description": {
           "url": "Full base URL including port (e.g., http://192.168.1.100:8004).",
-          "model_type": "Original: English with emotion control. Turbo: fastest, paralinguistic tags. Multilingual: 23 languages.",
-          "voice_mode": "Clone: Voice from an audio file. Predefined: Voice from the server."
+          "model_type": "Original: emotion control. Turbo: fast, paralinguistic tags. Multilingual: 23 languages.",
+          "voice_mode": "Clone: voice from an audio file. Predefined: voice from the server."
         }
       },
       "voice_params": {
         "title": "Voice & Speech Style",
-        "description": "Select or enter the voice and adjust speech parameters.",
+        "description": "Select a voice and adjust speech parameters.",
         "data": {
           "reference_audio_filename": "Voice",
           "exaggeration": "Exaggeration",
+          "cfg_weight": "CFG Weight",
           "speed_factor": "Speed Factor",
+          "temperature": "Temperature",
+          "chunk_size": "Chunk Size",
+          "stream": "Stream audio",
           "language": "Language"
         },
         "data_description": {
-          "reference_audio_filename": "Select a voice from the Chatterbox server list.",
-          "exaggeration": "Emotional intensity. 0.0 = flat, 0.5 = natural, higher = more expressive.",
-          "speed_factor": "Speech speed. EXPERIMENTAL — values ≠ 1.0 may cause echo or artifacts.",
-          "language": "ISO 639-1 code (e.g. en, fr, de, ja, zh). Only used with the Multilingual model."
+          "reference_audio_filename": "Select a voice from the server.",
+          "exaggeration": "Lower = flatter delivery; higher = more expressive. Ignored by Turbo.",
+          "cfg_weight": "Lower = more creative; higher = closer to the reference voice. Ignored by Turbo.",
+          "speed_factor": "Speech speed — values other than 1.0 may cause artifacts. Ignored by Turbo.",
+          "temperature": "Lower = more consistent output; higher = more varied. Ignored by Turbo.",
+          "chunk_size": "Words per synthesis chunk — lower = less latency; higher = better prosody.",
+          "stream": "Send audio as it's generated instead of waiting for the full clip.",
+          "language": "Only used by the Multilingual model."
         }
       }
     },
@@ -47,15 +55,23 @@
           "model_type": "Model",
           "reference_audio_filename": "Voice",
           "exaggeration": "Exaggeration",
+          "cfg_weight": "CFG Weight",
           "speed_factor": "Speed Factor",
+          "temperature": "Temperature",
+          "chunk_size": "Chunk Size",
+          "stream": "Stream audio",
           "language": "Language"
         },
         "data_description": {
-          "model_type": "Original: English with emotion control. Turbo: fastest, paralinguistic tags. Multilingual: 23 languages.",
-          "reference_audio_filename": "Select a voice from the Chatterbox server list.",
-          "exaggeration": "Emotional intensity. 0.0 = flat, 0.5 = natural, higher = more expressive.",
-          "speed_factor": "Speech speed. EXPERIMENTAL — values ≠ 1.0 may cause echo or artifacts.",
-          "language": "ISO 639-1 code (e.g. en, fr, de, ja, zh). Only used with the Multilingual model."
+          "model_type": "Original: emotion control. Turbo: fast, paralinguistic tags. Multilingual: 23 languages.",
+          "reference_audio_filename": "Select a voice from the server.",
+          "exaggeration": "Lower = flatter delivery; higher = more expressive. Ignored by Turbo.",
+          "cfg_weight": "Lower = more creative; higher = closer to the reference voice. Ignored by Turbo.",
+          "speed_factor": "Speech speed — values other than 1.0 may cause artifacts. Ignored by Turbo.",
+          "temperature": "Lower = more consistent output; higher = more varied. Ignored by Turbo.",
+          "chunk_size": "Words per synthesis chunk — lower = less latency; higher = better prosody.",
+          "stream": "Send audio as it's generated instead of waiting for the full clip.",
+          "language": "Only used by the Multilingual model."
         }
       }
     },

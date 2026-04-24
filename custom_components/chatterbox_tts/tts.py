@@ -6,7 +6,7 @@ import logging
 import re
 import aiohttp
 
-from homeassistant.components.tts import TextToSpeechEntity
+from homeassistant.components.tts import TextToSpeechEntity, TTSAudioRequest, TTSAudioResponse
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -17,10 +17,16 @@ from .const import (
     CONF_VOICE_MODE,
     CONF_REFERENCE_AUDIO,
     CONF_EXAGGERATION,
+    CONF_CFG_WEIGHT,
     CONF_SPEED_FACTOR,
     CONF_MODEL_TYPE,
     CONF_LANGUAGE,
+    CONF_STREAM,
+    CONF_CHUNK_SIZE,
+    CONF_TEMPERATURE,
     DEFAULT_MODEL_TYPE,
+    DEFAULT_CHUNK_SIZE,
+    DEFAULT_TEMPERATURE,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -193,75 +199,140 @@ class ChatterboxTTSEntity(TextToSpeechEntity):
 
     @property
     def supported_options(self) -> list[str]:
-        return [CONF_EXAGGERATION, CONF_SPEED_FACTOR, CONF_LANGUAGE]
+        return [
+            CONF_EXAGGERATION,
+            CONF_CFG_WEIGHT,
+            CONF_SPEED_FACTOR,
+            CONF_TEMPERATURE,
+            CONF_LANGUAGE,
+            CONF_STREAM,
+            CONF_CHUNK_SIZE,
+        ]
 
     @property
     def default_options(self) -> dict:
         return {
-            "exaggeration": 0.5,
-            "speed_factor": 1.0,
+            CONF_EXAGGERATION: 0.5,
+            CONF_CFG_WEIGHT: 0.5,
+            CONF_SPEED_FACTOR: 1.0,
+            CONF_TEMPERATURE: DEFAULT_TEMPERATURE,
+            CONF_STREAM: False,
+            CONF_CHUNK_SIZE: DEFAULT_CHUNK_SIZE,
         } | self._options
 
-    async def async_get_tts_audio(
+    async def async_stream_tts_audio(
         self,
-        message: str,
-        language: str | None = None,
-        options: dict | None = None,
-    ) -> tuple[str, bytes] | tuple[None, None]:
-        model_type = self._cfg.get(CONF_MODEL_TYPE, DEFAULT_MODEL_TYPE)
+        request: TTSAudioRequest,
+    ) -> TTSAudioResponse:
+        # Consume the async text generator to get the full message string
+        message = "".join([chunk async for chunk in request.message_gen])
+        language = request.language
+        options = request.options
+        opts = {**self.default_options, **(options or {})}
+        cfg = {**self._cfg, **(options or {})}
+        model_type = cfg.get(CONF_MODEL_TYPE, DEFAULT_MODEL_TYPE)
+        use_stream = bool(opts.get(CONF_STREAM, False))
         _LOGGER.debug(
-            "TTS request: entity=%s model_type=%r cfg=%s",
-            self.entity_id, model_type, self._cfg,
+            "TTS stream request: entity=%s model_type=%r server_stream=%s",
+            self.entity_id, model_type, use_stream,
         )
 
-        # Ensure the server is running the correct model for this entity
         model_ok = await _ensure_model(self.hass, self._url, model_type)
         if not model_ok:
             _LOGGER.error(
-                "Failed to switch server to model '%s' — TTS request aborted",
+                "Failed to switch server to model '%s' — TTS stream request aborted",
                 model_type,
             )
-            return None, None
 
-        opts = {**self.default_options, **(options or {})}
+            async def _empty():
+                return
+                yield
+
+            return TTSAudioResponse(extension="wav", data_gen=_empty())
+
+        voice_filename = cfg.get(CONF_REFERENCE_AUDIO)
+        if not voice_filename:
+            _LOGGER.error("No voice filename in data - skipping TTS stream request")
+
+            async def _empty():
+                return
+                yield
+
+            return TTSAudioResponse(extension="wav", data_gen=_empty())
+
+        voice_mode = cfg.get(CONF_VOICE_MODE, "clone")
+
+        is_turbo = model_type == "chatterbox-turbo"
+
         payload: dict = {
             "text": message,
-            "voice_mode": self._cfg.get(CONF_VOICE_MODE, "clone"),
-            "output_format": "mp3",
+            "voice_mode": voice_mode,
             "split_text": True,
-            "chunk_size": 240,
-            "exaggeration": float(opts.get("exaggeration", 0.5)),
-            "speed_factor": float(opts.get("speed_factor", 1.0)),
+            "chunk_size": int(opts.get(CONF_CHUNK_SIZE, DEFAULT_CHUNK_SIZE)),
         }
-        voice_filename = self._cfg.get(CONF_REFERENCE_AUDIO)
-        if voice_filename:
-            if payload["voice_mode"] == "clone":
-                payload["reference_audio_filename"] = voice_filename
-            else:
-                payload["predefined_voice_id"] = voice_filename
-        else:
-            _LOGGER.error("No voice filename in data - skipping TTS request")
-            return None, None
+        if not is_turbo:
+            payload["exaggeration"] = float(opts.get(CONF_EXAGGERATION, 0.5))
+            payload["cfg_weight"] = float(opts.get(CONF_CFG_WEIGHT, 0.5))
+            payload["speed_factor"] = float(opts.get(CONF_SPEED_FACTOR, 1.0))
+            payload["temperature"] = float(opts.get(CONF_TEMPERATURE, DEFAULT_TEMPERATURE))
 
-        # Pass language for multilingual model
+        if voice_mode == "clone":
+            payload["reference_audio_filename"] = voice_filename
+        else:
+            payload["predefined_voice_id"] = voice_filename
+
         if model_type == "chatterbox-multilingual":
-            # Prefer per-call language option, then config language, then HA language
-            lang = opts.get(CONF_LANGUAGE) or self._cfg.get(CONF_LANGUAGE) or language or "en"
-            # Strip region suffix (e.g. "en-US" -> "en") for the server API
+            lang = opts.get(CONF_LANGUAGE) or cfg.get(CONF_LANGUAGE) or language or "en"
             if lang and "-" in lang:
                 lang = lang.split("-")[0]
             payload["language"] = lang
 
-        _LOGGER.debug("Sending payload to Chatterbox: %s", payload)
-        try:
-            async with aiohttp.ClientSession(timeout=_TTS_TIMEOUT) as session:
-                async with session.post(f"{self._url}/tts", json=payload) as response:
-                    if response.status != 200:
-                        text = await response.text()
-                        _LOGGER.error("Chatterbox TTS error %s: %s", response.status, text)
-                        return None, None
-                    audio = await response.read()
-                    return "mp3", audio
-        except Exception as err:
-            _LOGGER.exception("Unexpected error in Chatterbox TTS: %s", err)
-            return None, None
+        url = self._url
+
+        if use_stream:
+            payload["output_format"] = "wav"
+            payload["stream"] = True
+            _LOGGER.debug("Sending payload to Chatterbox (stream): %s", payload)
+
+            async def audio_gen_stream():
+                try:
+                    async with aiohttp.ClientSession(timeout=_TTS_TIMEOUT) as session:
+                        async with session.post(f"{url}/tts", json=payload) as response:
+                            if response.status != 200:
+                                body = await response.text()
+                                _LOGGER.error(
+                                    "Chatterbox TTS stream error %s: %s", response.status, body
+                                )
+                                return
+                            first = True
+                            async for chunk in response.content.iter_chunked(8192):
+                                if first:
+                                    first = False
+                                    if len(chunk) >= 28:
+                                        sample_rate = int.from_bytes(chunk[24:28], "little")
+                                        _LOGGER.debug("Stream WAV sample_rate=%d", sample_rate)
+                                yield chunk
+                except Exception as err:
+                    _LOGGER.exception("Error in Chatterbox TTS stream: %s", err)
+
+            return TTSAudioResponse(extension="wav", data_gen=audio_gen_stream())
+
+        else:
+            payload["output_format"] = "mp3"
+            _LOGGER.debug("Sending payload to Chatterbox (buffered): %s", payload)
+
+            async def audio_gen_buffered():
+                try:
+                    async with aiohttp.ClientSession(timeout=_TTS_TIMEOUT) as session:
+                        async with session.post(f"{url}/tts", json=payload) as response:
+                            if response.status != 200:
+                                body = await response.text()
+                                _LOGGER.error(
+                                    "Chatterbox TTS error %s: %s", response.status, body
+                                )
+                                return
+                            yield await response.read()
+                except Exception as err:
+                    _LOGGER.exception("Unexpected error in Chatterbox TTS: %s", err)
+
+            return TTSAudioResponse(extension="mp3", data_gen=audio_gen_buffered())

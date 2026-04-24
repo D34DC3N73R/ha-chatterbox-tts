@@ -15,11 +15,17 @@ from .const import (
     CONF_VOICE_MODE,
     CONF_REFERENCE_AUDIO,
     CONF_EXAGGERATION,
+    CONF_CFG_WEIGHT,
     CONF_SPEED_FACTOR,
     CONF_MODEL_TYPE,
     CONF_LANGUAGE,
+    CONF_STREAM,
+    CONF_CHUNK_SIZE,
+    CONF_TEMPERATURE,
     MODEL_TYPES,
     DEFAULT_MODEL_TYPE,
+    DEFAULT_CHUNK_SIZE,
+    DEFAULT_TEMPERATURE,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -209,7 +215,6 @@ class ChatterboxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         default_voice = options[0]["value"]
 
-        # Build the schema - add language selector for multilingual model
         fields: dict = {
             vol.Required(CONF_REFERENCE_AUDIO, default=default_voice): selector.SelectSelector(
                 selector.SelectSelectorConfig(
@@ -220,18 +225,53 @@ class ChatterboxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     mode=selector.SelectSelectorMode.DROPDOWN,
                 )
             ),
+            vol.Optional(CONF_STREAM, default=False): selector.BooleanSelector(),
+            vol.Optional(CONF_CHUNK_SIZE, default=DEFAULT_CHUNK_SIZE): selector.NumberSelector(
+                selector.NumberSelectorConfig(min=10, max=500, step=10, mode=selector.NumberSelectorMode.SLIDER)
+            ),
             vol.Optional(CONF_EXAGGERATION, default=0.5): selector.NumberSelector(
-                selector.NumberSelectorConfig(min=0.0, max=2.0, step=0.05, mode=selector.NumberSelectorMode.BOX)
+                selector.NumberSelectorConfig(min=0.0, max=2.0, step=0.05, mode=selector.NumberSelectorMode.SLIDER)
+            ),
+            vol.Optional(CONF_LANGUAGE, default="en"): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[
+                        {"value": "ar", "label": "Arabic"},
+                        {"value": "zh", "label": "Chinese"},
+                        {"value": "da", "label": "Danish"},
+                        {"value": "nl", "label": "Dutch"},
+                        {"value": "en", "label": "English"},
+                        {"value": "fi", "label": "Finnish"},
+                        {"value": "fr", "label": "French"},
+                        {"value": "de", "label": "German"},
+                        {"value": "el", "label": "Greek"},
+                        {"value": "he", "label": "Hebrew"},
+                        {"value": "hi", "label": "Hindi"},
+                        {"value": "it", "label": "Italian"},
+                        {"value": "ja", "label": "Japanese"},
+                        {"value": "ko", "label": "Korean"},
+                        {"value": "ms", "label": "Malay"},
+                        {"value": "no", "label": "Norwegian"},
+                        {"value": "pl", "label": "Polish"},
+                        {"value": "pt", "label": "Portuguese"},
+                        {"value": "ru", "label": "Russian"},
+                        {"value": "es", "label": "Spanish"},
+                        {"value": "sv", "label": "Swedish"},
+                        {"value": "sw", "label": "Swahili"},
+                        {"value": "tr", "label": "Turkish"},
+                    ],
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
             ),
             vol.Optional(CONF_SPEED_FACTOR, default=1.0): selector.NumberSelector(
-                selector.NumberSelectorConfig(min=0.25, max=4.0, step=0.05, mode=selector.NumberSelectorMode.BOX)
+                selector.NumberSelectorConfig(min=0.25, max=4.0, step=0.05, mode=selector.NumberSelectorMode.SLIDER)
+            ),
+            vol.Optional(CONF_CFG_WEIGHT, default=0.5): selector.NumberSelector(
+                selector.NumberSelectorConfig(min=0.0, max=1.0, step=0.05, mode=selector.NumberSelectorMode.SLIDER)
+            ),
+            vol.Optional(CONF_TEMPERATURE, default=DEFAULT_TEMPERATURE): selector.NumberSelector(
+                selector.NumberSelectorConfig(min=0.0, max=1.0, step=0.05, mode=selector.NumberSelectorMode.SLIDER)
             ),
         }
-
-        if model_type == "chatterbox-multilingual":
-            fields[vol.Optional(CONF_LANGUAGE, default="en")] = selector.TextSelector(
-                selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
-            )
 
         schema = vol.Schema(fields)
 
@@ -324,19 +364,53 @@ class ChatterboxOptionsFlow(config_entries.OptionsFlow):
                     mode=selector.SelectSelectorMode.DROPDOWN,
                 )
             ),
+            vol.Optional(CONF_STREAM, default=current.get(CONF_STREAM, False)): selector.BooleanSelector(),
+            vol.Optional(CONF_CHUNK_SIZE, default=current.get(CONF_CHUNK_SIZE, DEFAULT_CHUNK_SIZE)): selector.NumberSelector(
+                selector.NumberSelectorConfig(min=10, max=500, step=10, mode=selector.NumberSelectorMode.SLIDER)
+            ),
             vol.Optional(CONF_EXAGGERATION, default=current.get(CONF_EXAGGERATION, 0.5)): selector.NumberSelector(
-                selector.NumberSelectorConfig(min=0.0, max=2.0, step=0.05, mode=selector.NumberSelectorMode.BOX)
+                selector.NumberSelectorConfig(min=0.0, max=2.0, step=0.05, mode=selector.NumberSelectorMode.SLIDER)
+            ),
+            vol.Optional(CONF_LANGUAGE, default=current.get(CONF_LANGUAGE, "en")): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[
+                        {"value": "ar", "label": "Arabic"},
+                        {"value": "zh", "label": "Chinese"},
+                        {"value": "da", "label": "Danish"},
+                        {"value": "nl", "label": "Dutch"},
+                        {"value": "en", "label": "English"},
+                        {"value": "fi", "label": "Finnish"},
+                        {"value": "fr", "label": "French"},
+                        {"value": "de", "label": "German"},
+                        {"value": "el", "label": "Greek"},
+                        {"value": "he", "label": "Hebrew"},
+                        {"value": "hi", "label": "Hindi"},
+                        {"value": "it", "label": "Italian"},
+                        {"value": "ja", "label": "Japanese"},
+                        {"value": "ko", "label": "Korean"},
+                        {"value": "ms", "label": "Malay"},
+                        {"value": "no", "label": "Norwegian"},
+                        {"value": "pl", "label": "Polish"},
+                        {"value": "pt", "label": "Portuguese"},
+                        {"value": "ru", "label": "Russian"},
+                        {"value": "es", "label": "Spanish"},
+                        {"value": "sv", "label": "Swedish"},
+                        {"value": "sw", "label": "Swahili"},
+                        {"value": "tr", "label": "Turkish"},
+                    ],
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
             ),
             vol.Optional(CONF_SPEED_FACTOR, default=current.get(CONF_SPEED_FACTOR, 1.0)): selector.NumberSelector(
-                selector.NumberSelectorConfig(min=0.25, max=4.0, step=0.05, mode=selector.NumberSelectorMode.BOX)
+                selector.NumberSelectorConfig(min=0.25, max=4.0, step=0.05, mode=selector.NumberSelectorMode.SLIDER)
+            ),
+            vol.Optional(CONF_CFG_WEIGHT, default=current.get(CONF_CFG_WEIGHT, 0.5)): selector.NumberSelector(
+                selector.NumberSelectorConfig(min=0.0, max=1.0, step=0.05, mode=selector.NumberSelectorMode.SLIDER)
+            ),
+            vol.Optional(CONF_TEMPERATURE, default=current.get(CONF_TEMPERATURE, DEFAULT_TEMPERATURE)): selector.NumberSelector(
+                selector.NumberSelectorConfig(min=0.0, max=1.0, step=0.05, mode=selector.NumberSelectorMode.SLIDER)
             ),
         }
-
-        # Add language field for multilingual model
-        if current_model == "chatterbox-multilingual":
-            fields[vol.Optional(CONF_LANGUAGE, default=current.get(CONF_LANGUAGE, "en"))] = selector.TextSelector(
-                selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
-            )
 
         schema = vol.Schema(fields)
 
