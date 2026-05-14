@@ -27,6 +27,7 @@
           "temperature": "Temperature",
           "chunk_size": "Chunk Size",
           "stream": "Stream audio",
+          "output_format": "Output Format",
           "language": "Language"
         },
         "data_description": {
@@ -37,6 +38,7 @@
           "temperature": "Lower = more consistent output; higher = more varied. Ignored by Turbo.",
           "chunk_size": "Words per synthesis chunk — lower = less latency; higher = better prosody.",
           "stream": "Send audio as it's generated instead of waiting for the full clip.",
+          "output_format": "Audio format for buffered (non-streaming) output. Streaming always uses WAV.",
           "language": "Only used by the Multilingual model."
         }
       }
@@ -60,6 +62,7 @@
           "temperature": "Temperature",
           "chunk_size": "Chunk Size",
           "stream": "Stream audio",
+          "output_format": "Output Format",
           "language": "Language"
         },
         "data_description": {
@@ -71,6 +74,7 @@
           "temperature": "Lower = more consistent output; higher = more varied. Ignored by Turbo.",
           "chunk_size": "Words per synthesis chunk — lower = less latency; higher = better prosody.",
           "stream": "Send audio as it's generated instead of waiting for the full clip.",
+          "output_format": "Audio format for buffered (non-streaming) output. Streaming always uses WAV.",
           "language": "Only used by the Multilingual model."
         }
       }

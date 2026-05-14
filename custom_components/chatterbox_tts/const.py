@@ -22,3 +22,11 @@ MODEL_TYPES = {
 DEFAULT_MODEL_TYPE = "chatterbox"
 DEFAULT_CHUNK_SIZE = 120
 DEFAULT_TEMPERATURE = 0.8
+
+CONF_OUTPUT_FORMAT = "output_format"
+DEFAULT_OUTPUT_FORMAT = "mp3"
+OUTPUT_FORMATS = {
+    "mp3":  "MP3 (compressed, smaller)",
+    "wav":  "WAV (lossless, larger)",
+    "opus": "Opus (compressed, efficient)",
+}

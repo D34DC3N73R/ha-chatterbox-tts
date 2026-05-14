@@ -24,9 +24,11 @@ from .const import (
     CONF_STREAM,
     CONF_CHUNK_SIZE,
     CONF_TEMPERATURE,
+    CONF_OUTPUT_FORMAT,
     DEFAULT_MODEL_TYPE,
     DEFAULT_CHUNK_SIZE,
     DEFAULT_TEMPERATURE,
+    DEFAULT_OUTPUT_FORMAT,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -207,6 +209,7 @@ class ChatterboxTTSEntity(TextToSpeechEntity):
             CONF_LANGUAGE,
             CONF_STREAM,
             CONF_CHUNK_SIZE,
+            CONF_OUTPUT_FORMAT,
         ]
 
     @property
@@ -218,6 +221,7 @@ class ChatterboxTTSEntity(TextToSpeechEntity):
             CONF_TEMPERATURE: DEFAULT_TEMPERATURE,
             CONF_STREAM: False,
             CONF_CHUNK_SIZE: DEFAULT_CHUNK_SIZE,
+            CONF_OUTPUT_FORMAT: DEFAULT_OUTPUT_FORMAT,
         } | self._options
 
     async def async_stream_tts_audio(
@@ -318,8 +322,9 @@ class ChatterboxTTSEntity(TextToSpeechEntity):
             return TTSAudioResponse(extension="wav", data_gen=audio_gen_stream())
 
         else:
-            payload["output_format"] = "mp3"
-            _LOGGER.debug("Sending payload to Chatterbox (buffered): %s", payload)
+            fmt = opts.get(CONF_OUTPUT_FORMAT, DEFAULT_OUTPUT_FORMAT)
+            payload["output_format"] = fmt
+            _LOGGER.debug("Sending payload to Chatterbox (buffered, format=%s): %s", fmt, payload)
 
             async def audio_gen_buffered():
                 try:
@@ -335,4 +340,4 @@ class ChatterboxTTSEntity(TextToSpeechEntity):
                 except Exception as err:
                     _LOGGER.exception("Unexpected error in Chatterbox TTS: %s", err)
 
-            return TTSAudioResponse(extension="mp3", data_gen=audio_gen_buffered())
+            return TTSAudioResponse(extension=fmt, data_gen=audio_gen_buffered())

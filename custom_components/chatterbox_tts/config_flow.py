@@ -22,10 +22,13 @@ from .const import (
     CONF_STREAM,
     CONF_CHUNK_SIZE,
     CONF_TEMPERATURE,
+    CONF_OUTPUT_FORMAT,
     MODEL_TYPES,
+    OUTPUT_FORMATS,
     DEFAULT_MODEL_TYPE,
     DEFAULT_CHUNK_SIZE,
     DEFAULT_TEMPERATURE,
+    DEFAULT_OUTPUT_FORMAT,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -226,6 +229,15 @@ class ChatterboxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 )
             ),
             vol.Optional(CONF_STREAM, default=False): selector.BooleanSelector(),
+            vol.Optional(CONF_OUTPUT_FORMAT, default=DEFAULT_OUTPUT_FORMAT): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[
+                        selector.SelectOptionDict(value=k, label=v)
+                        for k, v in OUTPUT_FORMATS.items()
+                    ],
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            ),
             vol.Optional(CONF_CHUNK_SIZE, default=DEFAULT_CHUNK_SIZE): selector.NumberSelector(
                 selector.NumberSelectorConfig(min=10, max=500, step=10, mode=selector.NumberSelectorMode.SLIDER)
             ),
@@ -365,6 +377,15 @@ class ChatterboxOptionsFlow(config_entries.OptionsFlow):
                 )
             ),
             vol.Optional(CONF_STREAM, default=current.get(CONF_STREAM, False)): selector.BooleanSelector(),
+            vol.Optional(CONF_OUTPUT_FORMAT, default=current.get(CONF_OUTPUT_FORMAT, DEFAULT_OUTPUT_FORMAT)): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[
+                        selector.SelectOptionDict(value=k, label=v)
+                        for k, v in OUTPUT_FORMATS.items()
+                    ],
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            ),
             vol.Optional(CONF_CHUNK_SIZE, default=current.get(CONF_CHUNK_SIZE, DEFAULT_CHUNK_SIZE)): selector.NumberSelector(
                 selector.NumberSelectorConfig(min=10, max=500, step=10, mode=selector.NumberSelectorMode.SLIDER)
             ),
